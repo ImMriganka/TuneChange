@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TuneChange</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f4f0;
+      color: #1a1a18;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .app { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 16px; }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 500;
+      color: #1a1a18;
+      margin-bottom: 4px;
+    }
+
+    p.sub { font-size: 13px; color: #73726c; }
+
+    .card {
+      background: #fff;
+      border: 0.5px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #1a1a18;
+      margin-bottom: 14px;
+    }
+
+    /* Player */
+    .now-playing-meta { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .album-art {
+      width: 48px; height: 48px; border-radius: 8px;
+      background: #EEEDFE;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .song-title { font-size: 14px; font-weight: 500; }
+    .song-meta  { font-size: 12px; color: #73726c; margin-top: 2px; }
+
+    .progress-bar {
+      height: 3px; background: #e8e7e3; border-radius: 2px;
+      margin-bottom: 6px; cursor: pointer;
+    }
+    .progress-fill { height: 100%; background: #534AB7; border-radius: 2px; width: 0%; transition: width 0.5s linear; }
+    .time-row { display: flex; justify-content: space-between; font-size: 11px; color: #888; }
+
+    .controls { display: flex; justify-content: center; align-items: center; gap: 20px; margin-top: 14px; }
+    .ctrl-btn {
+      background: none; border: none; cursor: pointer; padding: 4px;
+      color: #73726c; display: flex; align-items: center;
+    }
+    .play-pause {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 0.5px solid rgba(0,0,0,0.15);
+      background: #f5f4f0;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .play-pause:hover { background: #eeedfe; }
+
+    /* Settings */
+    .setting-row { margin-bottom: 14px; }
+    .setting-row:last-of-type { margin-bottom: 0; }
+    .setting-label {
+      display: flex; justify-content: space-between;
+      font-size: 12px; color: #73726c; margin-bottom: 5px;
+    }
+    .setting-label span:last-child { font-weight: 500; color: #1a1a18; }
+
+    input[type=range] {
+      width: 100%; accent-color: #534AB7;
+      height: 4px; cursor: pointer;
+    }
+
+    .hint { font-size: 11px; color: #888; margin-top: 4px; }
+
+    .gen-btn {
+      width: 100%; margin-top: 16px; padding: 10px;
+      border: 0.5px solid rgba(0,0,0,0.15);
+      border-radius: 8px;
+      background: #f5f4f0;
+      font-size: 14px; font-weight: 500;
+      cursor: pointer; color: #1a1a18;
+      transition: background 0.15s;
+    }
+    .gen-btn:hover { background: #eeedfe; }
+    .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Status */
+    .status-bar {
+      font-size: 13px; color: #73726c;
+      padding: 8px 0; text-align: center;
+      min-height: 32px;
+    }
+    .status-bar.error { color: #A32D2D; }
+    .status-bar.success { color: #0F6E56; }
+
+    /* Song list */
+    .song-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 0;
+      border-bottom: 0.5px solid rgba(0,0,0,0.08);
+      cursor: pointer;
+    }
+    .song-row:last-child { border-bottom: none; }
+    .song-row:hover .mini-play { background: #eeedfe; }
+    .song-row.active .song-row-title { color: #534AB7; }
+
+    .mini-play {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 0.5px solid rgba(0,0,0,0.12);
+      background: #f5f4f0;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: background 0.15s;
+    }
+
+    .song-row-title { font-size: 13px; color: #1a1a18; }
+    .song-row-meta  { font-size: 11px; color: #888; margin-top: 1px; }
+    .song-duration  { font-size: 11px; color: #888; margin-left: auto; }
+
+    .empty-state { font-size: 13px; color: #888; text-align: center; padding: 12px 0; }
+
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(83,74,183,0.2);
+      border-top-color: #534AB7;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div>
+    <h1>TuneChange</h1>
+    <p class="sub">AI-generated instrumental music</p>
+  </div>
+
+  <!-- Player -->
+  <div class="card" id="player-card">
+    <p class="card-title">Now playing</p>
+    <div class="now-playing-meta">
+      <div class="album-art">
+        <svg width="20" height="20" viewBox="0 0 20 20">
+          <path d="M8 3v10.5A2.5 2.5 0 1 1 5.5 11H6V7l8-2v5.5A2.5 2.5 0 1 1 11.5 8H12V4L8 3z" fill="#534AB7"/>
+        </svg>
+      </div>
+      <div>
+        <p class="song-title" id="now-title">No song loaded</p>
+        <p class="song-meta"  id="now-meta">Generate a song below to get started</p>
+      </div>
+    </div>
+
+    <div class="progress-bar" id="progress-bar" onclick="seekAudio(event)">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="time-row">
+      <span id="time-current">0:00</span>
+      <span id="time-total">0:00</span>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl-btn" onclick="playPrev()" title="Previous">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/>
+        </svg>
+      </button>
+      <button class="play-pause" id="play-pause-btn" onclick="togglePlay()">
+        <svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="#1a1a18">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        <svg id="pause-icon" width="16" height="16" viewBox="0 0 24 24" fill="#1a1a18" style="display:none">
+          <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+        </svg>
+      </button>
+      <button class="ctrl-btn" onclick="playNext()" title="Next">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>
+        </svg>
+      </button>
+    </div>
+
+    <audio id="audio-player" preload="auto"></audio>
+  </div>
+
+  <!-- Settings -->
+  <div class="card">
+    <p class="card-title">Generation settings</p>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span>Number of notes</span>
+        <span id="notes-val">200</span>
+      </div>
+      <input type="range" id="num-notes" min="100" max="500" step="10" value="200"
+             oninput="document.getElementById('notes-val').textContent = this.value"/>
+      <p class="hint">More notes = longer song &nbsp;·&nbsp; 200 ≈ 50s &nbsp;·&nbsp; 500 ≈ 2min</p>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span>Temperature</span>
+        <span id="temp-val">0.8</span>
+      </div>
+      <input type="range" id="temperature" min="0.1" max="1.5" step="0.1" value="0.8"
+             oninput="document.getElementById('temp-val').textContent = parseFloat(this.value).toFixed(1)"/>
+      <p class="hint">Low = safe &amp; repetitive &nbsp;·&nbsp; High = creative &amp; unpredictable</p>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">
+        <span>Note duration</span>
+        <span id="dur-val">0.5</span>
+      </div>
+      <input type="range" id="note-duration" min="0.25" max="1.5" step="0.25" value="0.5"
+             oninput="document.getElementById('dur-val').textContent = parseFloat(this.value).toFixed(2)"/>
+      <p class="hint">Controls the rhythm feel &nbsp;·&nbsp; 0.25 = fast &nbsp;·&nbsp; 1.5 = slow</p>
+    </div>
+
+    <button class="gen-btn" id="gen-btn" onclick="generateSong()">
+      Generate new song
+    </button>
+    <div class="status-bar" id="status-bar"></div>
+  </div>
+
+  <!-- Song history -->
+  <div class="card">
+    <p class="card-title">Generated songs</p>
+    <div id="song-list"><p class="empty-state">No songs yet</p></div>
+  </div>
+
+</div>
+
+<script>
+  const audio    = document.getElementById('audio-player');
+  let songs      = [];
+  let currentIdx = -1;
+
+  function fmt(secs) {
+    const s = Math.floor(secs);
+    return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  }
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('time-current').textContent = fmt(audio.currentTime);
+  });
+
+  audio.addEventListener('loadedmetadata', () => {
+    document.getElementById('time-total').textContent = fmt(audio.duration);
+  });
+
+  audio.addEventListener('ended', () => {
+    setPlayIcon(false);
+    playNext();
+  });
+
+  function setPlayIcon(playing) {
+    document.getElementById('play-icon').style.display  = playing ? 'none'  : 'block';
+    document.getElementById('pause-icon').style.display = playing ? 'block' : 'none';
+  }
+
+  function togglePlay() {
+    if (!audio.src) return;
+    if (audio.paused) { audio.play(); setPlayIcon(true); }
+    else              { audio.pause(); setPlayIcon(false); }
+  }
+
+  function seekAudio(e) {
+    if (!audio.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+  }
+
+  function loadSong(idx) {
+    if (idx < 0 || idx >= songs.length) return;
+    currentIdx = idx;
+    const s = songs[idx];
+    audio.src = `/audio/${s.filename}`;
+    audio.play();
+    setPlayIcon(true);
+    document.getElementById('now-title').textContent = s.filename;
+    document.getElementById('now-meta').textContent  =
+      `${s.num_notes || '—'} notes · temp ${s.temperature || '—'} · ${fmt(s.duration)}`;
+    renderSongList();
+  }
+
+  function playPrev() {
+    if (currentIdx > 0) loadSong(currentIdx - 1);
+  }
+
+  function playNext() {
+    if (currentIdx < songs.length - 1) loadSong(currentIdx + 1);
+  }
+
+  function renderSongList() {
+    const el = document.getElementById('song-list');
+    if (!songs.length) { el.innerHTML = '<p class="empty-state">No songs yet</p>'; return; }
+
+    el.innerHTML = songs.map((s, i) => `
+      <div class="song-row ${i === currentIdx ? 'active' : ''}" onclick="loadSong(${i})">
+        <div class="mini-play">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="#1a1a18">
+            <polygon points="2 1 9 5 2 9"/>
+          </svg>
+        </div>
+        <div>
+          <p class="song-row-title">${s.filename}</p>
+          <p class="song-row-meta">${s.num_notes || '—'} notes · temp ${s.temperature || '—'}</p>
+        </div>
+        <span class="song-duration">${fmt(s.duration)}</span>
+      </div>
+    `).join('');
+  }
+
+  async function loadSongList() {
+    try {
+      const res  = await fetch('/songs');
+      const data = await res.json();
+      songs = data;
+      renderSongList();
+
+      // Auto-load the first song into the player
+      if (songs.length && currentIdx === -1) {
+        const s = songs[0];
+        audio.src = `/audio/${s.filename}`;
+        document.getElementById('now-title').textContent = s.filename;
+        document.getElementById('now-meta').textContent  =
+          `${s.num_notes || '—'} notes · ${fmt(s.duration)}`;
+        currentIdx = 0;
+        renderSongList();
+      }
+    } catch(e) {
+      console.error('Failed to load songs', e);
+    }
+  }
+
+  async function generateSong() {
+    const btn    = document.getElementById('gen-btn');
+    const status = document.getElementById('status-bar');
+
+    const numNotes    = parseInt(document.getElementById('num-notes').value);
+    const temperature = parseFloat(document.getElementById('temperature').value);
+    const noteDuration= parseFloat(document.getElementById('note-duration').value);
+
+    btn.disabled    = true;
+    btn.innerHTML   = '<span class="spinner"></span>Generating...';
+    status.className= 'status-bar';
+    status.innerHTML= 'This takes about 30–60 seconds...';
+
+    try {
+      const res  = await fetch('/generate', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ num_notes: numNotes, temperature, note_duration: noteDuration })
+      });
+      const data = await res.json();
+
+      if (data.status === 'ok') {
+        // Add to songs list with full metadata
+        songs.unshift({
+          filename:    data.filename,
+          duration:    data.duration,
+          num_notes:   data.num_notes,
+          temperature: data.temperature.toFixed(1)
+        });
+        renderSongList();
+
+        // Auto-load and play the new song
+        currentIdx = 0;
+        loadSong(0);
+
+        status.className = 'status-bar success';
+        status.textContent = `Done! Generated ${data.filename}`;
+      } else {
+        status.className = 'status-bar error';
+        status.textContent = `Error: ${data.message}`;
+      }
+
+    } catch(e) {
+      status.className = 'status-bar error';
+      status.textContent = 'Server error — is app.py running?';
+    }
+
+    btn.disabled  = false;
+    btn.innerHTML = 'Generate new song';
+  }
+
+  loadSongList();
+</script>
+</body>
+</html>

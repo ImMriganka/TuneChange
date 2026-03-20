@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+
+# Conda / venv
+venv/
+env/
+.env
+.env.*
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# Large data files — do NOT push
+data/raw/
+data/processed/
+assets/
+
+# All generated audio/MIDI outputs
+outputs/generated/*.mid
+outputs/generated/*.wav
+outputs/generated/*.mp3
+
+# Trained model weights — too large for GitHub (100MB limit)
+outputs/*.keras
+outputs/*.h5
+
+# Flask
+flask_session/
+instance/
+
+# macOS
+.DS_Store
+.DS_Store?
+**/.DS_Store
+
+# VS Code
+.vscode/
